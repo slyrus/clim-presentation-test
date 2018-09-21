@@ -1,7 +1,7 @@
 
 (cl:defpackage :clim-presentation-test
   (:use #:clim-lisp #:clim)
-  (:export #:clim-presentation-test))
+  (:export #:clim-presentation-test-app-main]))
 
 (in-package :clim-presentation-test)
 
