@@ -6,7 +6,8 @@
 (in-package :clim-presentation-test)
 
 (define-application-frame clim-presentation-test ()
-  ((warp-level :initform 0 :accessor warp-level))
+  ((warp-level :initform 0 :accessor warp-level)
+   (points :initform nil :accessor points))
   (:menu-bar clim-presentation-test-menubar)
   (:panes
    (app :application
@@ -22,13 +23,16 @@
   :inherit-from 'integer)
 
 (defun clim-presentation-test-display (frame pane)
-  (with-accessors ((warp-level warp-level))
+  (with-accessors ((warp-level warp-level)
+                   (points points))
       frame
     (with-text-size (pane :large)
       (fresh-line pane)
-      (with-output-as-presentation
-          (t warp-level 'warp-level)
-        (format t "~A" warp-level)))))
+      (present warp-level 'real)
+      (loop for point in points
+       do (with-output-as-presentation
+              (t point 'clim:point)
+            (format t "~&~A ~A" (clim:point-x point) (clim:point-y point)))))))
 
 (defun accepting-warp-level (&key (stream *query-io*))
   (accepting-values (stream)
@@ -45,7 +49,36 @@
                    (stream frame-standard-input))
       *application-frame*
     (setf warp-level (accepting-warp-level :stream stream))
-    (format stream "New Warp Level: ~S~%" warp-level)))
+    (with-output-as-presentation
+          (t warp-level 'warp-level)
+      (format stream "New Warp Level: ~S~%" warp-level))))
+
+(defun accepting-point (&key (stream *query-io*))
+  (accepting-values (stream)
+    (let ((x (accept 'integer
+                     :stream stream
+                     :default 0
+                     :prompt "Point X: "))
+          (y (accept 'integer
+                     :stream stream
+                     :default 0
+                     :prompt "Point Y: ")))
+      (clim:make-point x y))))
+
+(define-clim-presentation-test-command (com-add-point
+                                        :name t
+                                        :menu nil)
+    ()
+  (with-accessors ((points points)
+                   (stream frame-standard-input))
+      *application-frame*
+    (let ((point (accepting-point :stream stream)))
+      (when point
+        (push point points)))
+    (loop for point in points
+       do (with-output-as-presentation
+              (t point 'clim:point)
+            (format t "~&~A ~A" (clim:point-x point) (clim:point-y point))))))
 
 (define-clim-presentation-test-command (com-quit :name t :menu "Quit")
    ()
