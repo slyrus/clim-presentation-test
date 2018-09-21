@@ -36,7 +36,7 @@
 
 (defun accepting-warp-level (&key (stream *query-io*))
   (accepting-values (stream)
-    (accept 'integer
+    (accept 'warp-level
             :stream stream
             :default 4
             :prompt "Warp Level")))
