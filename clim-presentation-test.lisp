@@ -7,7 +7,8 @@
 
 (define-application-frame clim-presentation-test ()
   ((points :initform nil :accessor points)
-   (ink :initform +blue+ :accessor ink))
+   (ink :initform +blue+ :accessor ink)
+   (view-origin :initform nil :accessor view-origin))
   (:menu-bar clim-presentation-test-menubar)
   (:panes
    (app :application
@@ -21,26 +22,32 @@
 
 (defun clim-presentation-test-display (frame pane)
   (with-accessors ((points points)
-                   (ink ink))
+                   (ink ink)
+                   (view-origin view-origin))
       frame
     (with-text-size (pane :large)
       ;;
       ;; "Points" Label to start drwaing points
       (with-output-as-presentation
-          (t `(com-add-point ,(make-point 0 0)) 'command)
+          (t `(com-add-point nil 0 0) 'command)
         (format pane "Add Point~&"))
       ;;
       ;; now let's draw the points
-      (with-room-for-graphics (pane :first-quadrant nil)
-        (loop
-           :for last-point = nil then point
-           :for point :in points
-           :do
-             (with-output-as-presentation
-                 (t point 'point)
-               (draw-circle pane point 6 :ink ink :filled t))
-             (when last-point
-               (draw-line pane last-point point :ink ink)))))))
+      (let ((record
+             (with-room-for-graphics (pane :first-quadrant nil)
+               (loop
+                  :for last-point = nil then point
+                  :for point :in points
+                  :do
+                    (with-output-as-presentation
+                        (t point 'point)
+                      (draw-circle pane point 6 :ink ink :filled t))
+                    (when last-point
+                      (draw-line pane last-point point :ink ink))))))
+        (unless view-origin
+          (multiple-value-bind (px py)
+              (output-record-position record)
+            (setf view-origin (make-point px py))))))))
 
 (defun get-pointer-position (pane)
   "Returns a point with x and y values of the stream-pointer-position
@@ -48,39 +55,30 @@ of pane."
   (multiple-value-bind (x y) (stream-pointer-position pane)
     (make-point x y)))
 
-(define-clim-presentation-test-command (com-drag-point)
-    ((presentation t) (x real) (y real))
-  (print (list 'foo presentation x y) *debug-io*)
-  (let ((parent (output-record-parent presentation)))
-    #+(or) (describe presentation *debug-io*)
-    (multiple-value-bind (px py)
-        (output-record-position parent)
-      (with-accessors ((ink ink))
-          *application-frame*
-        (let ((pane (get-frame-pane *application-frame* 'app)))
-          (multiple-value-bind (x y)
-	      (dragging-output (pane :finish-on-release t)
-	        (draw-circle pane (get-pointer-position pane) 6
-                             :ink ink :filled t))
-            (com-move-point (presentation-object presentation)
-                            (+ (- x px) 6)
-                            (+ (- y py) 6))))))))
+(define-clim-presentation-test-command (com-move-point)
+    ((point point :prompt "point")
+     (x real :prompt "X")
+     (y real :prompt "Y"))
+  (with-accessors ((points points))
+      *application-frame*
+    (when (and point x y)
+      (let ((tail (member point points)))
+        (when tail
+          (rplaca tail (make-point x y)))))))
 
-(define-presentation-to-command-translator point-dragging-translator
-    (point com-drag-point clim-presentation-test
-       :gesture t
-       :menu nil
-       :tester ((object presentation event)
-                (declare (ignore presentation))
-                #+nil (describe presentation *debug-io*)
-                (when event
-                  (describe event *debug-io*)
-                  #+nil
-                  (let ((state (event-modifier-state event)))
-                    (print (list 'state state) *debug-io*)))
-                (pointp object)))
-    (object presentation x y)
-  (list presentation x y))
+(define-clim-presentation-test-command (com-drag-move-point)
+    ((presentation t))
+  (multiple-value-bind (px py)
+      (point-position (view-origin *application-frame*))
+    (with-accessors ((ink ink))
+        *application-frame*
+      (let ((pane (get-frame-pane *application-frame* 'app)))
+        (multiple-value-bind (x y)
+	    (dragging-output (pane :finish-on-release t)
+	      (draw-circle pane (get-pointer-position pane) 6
+                           :ink ink :filled t))
+          (let ((old-point (presentation-object presentation)))
+            (com-move-point old-point (- x px) (- y py))))))))
 
 (defun insert-before (new-item before-item list)
   "Inserts new-item in list immediately before new-item and returns
@@ -93,31 +91,56 @@ the (destructively) modified list."
   list)
 
 (define-clim-presentation-test-command (com-add-point)
-    ((center point :prompt "point")
-     &key (previous-point point :default nil))
-  (with-accessors ((points points)
-                   (stream frame-standard-input))
-      *application-frame*
-    (when center
-      (if previous-point
-          (insert-before center previous-point points)
-          (push center points)))
-    (loop for point in points
-       do (with-output-as-presentation
-              (t point 'point)
-            (format t "~&~A ~A" (point-x point) (point-y point))))))
-
-(define-clim-presentation-test-command (com-move-point)
-    ((point point :prompt "point")
+    ((previous-point point :prompt "point")
      (x real :prompt "X")
      (y real :prompt "Y"))
-  (with-accessors ((points points)
-                   (stream frame-standard-input))
+  (with-accessors ((points points))
       *application-frame*
-    (when (and point x y)
-      (let ((tail (member point points)))
-        (when tail
-          (rplaca tail (make-point x y)))))))
+    (when (and x y)
+      (let ((point (make-point x y)))
+        (if previous-point
+            (insert-before point previous-point points)
+            (push point points))))))
+
+(define-clim-presentation-test-command (com-drag-add-point)
+    ((presentation t))
+  (multiple-value-bind (px py)
+      (point-position (view-origin *application-frame*))
+    (with-accessors ((ink ink))
+        *application-frame*
+      (let ((pane (get-frame-pane *application-frame* 'app)))
+        (multiple-value-bind (x y)
+	    (dragging-output (pane :finish-on-release t)
+	      (draw-circle pane (get-pointer-position pane) 6
+                           :ink ink :filled t))
+          (let ((old-point (presentation-object presentation)))
+            (com-add-point old-point (- x px) (- y py))))))))
+
+(define-gesture-name add-point-gesture :pointer-button (:left :control))
+
+(define-presentation-to-command-translator point-dragging-move-translator
+    (point com-drag-add-point clim-presentation-test
+           :gesture add-point-gesture
+           :menu nil
+           :tester ((object presentation event)
+                    (declare (ignore presentation event))
+                    (pointp object)))
+    (object presentation)
+  (list presentation))
+
+(define-gesture-name move-point-gesture :pointer-button (:left))
+
+(define-presentation-to-command-translator point-dragging-move-translator
+    (point com-drag-move-point clim-presentation-test
+           :gesture move-point-gesture
+           :menu nil
+           :tester ((object presentation event)
+                    (declare (ignore presentation event))
+                    (print object *debug-io*)
+                    (pointp object)))
+    (object presentation)
+  (list presentation))
+
 
 (define-clim-presentation-test-command (com-quit :name t :menu "Quit")
    ()
