@@ -142,6 +142,29 @@ the (destructively) modified list."
     (object presentation)
   (list presentation))
 
+(define-clim-presentation-test-command (com-split-line)
+    ((presentation t))
+  (with-accessors ((points points))
+      *application-frame*
+    (let ((line-points (presentation-object presentation)))
+      (destructuring-bind (p1 p2)
+          line-points
+        (let ((i1 (position p1 points))
+              (i2 (position p2 points)))
+          (let ((index (min (or i1 (length points))
+                            (or i2 (length points)))))
+            (com-drag-add-point (elt points (1+ index)))))))))
+
+(define-gesture-name click-line-gesture :pointer-button (:left :control))
+
+(define-presentation-to-command-translator click-line-translator
+    (line com-split-line clim-presentation-test
+          :gesture click-line-gesture
+          :menu nil
+          :tester ((object)
+                   t))
+    (object presentation)
+  (list presentation))
 
 (define-clim-presentation-test-command (com-quit :name t :menu "Quit")
    ()
