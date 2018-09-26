@@ -42,17 +42,9 @@
              (when last-point
                (draw-line pane last-point point :ink ink)))))))
 
-(defun accepting-point (&key (stream *query-io*))
-  (accepting-values (stream)
-    (let ((x (prog1
-                 (accept 'integer :stream stream :default 0 :prompt "Point X: ")
-               (fresh-line stream)))
-          (y (prog1
-                 (accept 'integer :stream stream :default 0 :prompt "Point Y: ")
-               (fresh-line stream))))
-      (make-point x y))))
-
 (defun get-pointer-position (pane)
+  "Returns a point with x and y values of the stream-pointer-position
+of pane."
   (multiple-value-bind (x y) (stream-pointer-position pane)
     (make-point x y)))
 
@@ -91,11 +83,14 @@
   (list presentation x y))
 
 (defun insert-before (new-item before-item list)
+  "Inserts new-item in list immediately before new-item and returns
+the (destructively) modified list."
   (let ((tail (member before-item list)))
             (if tail
                 (progn (rplacd tail (cons (car tail) (cdr tail)))
                        (rplaca tail new-item))
-                (push new-item list))))
+                (push new-item list)))
+  list)
 
 (define-clim-presentation-test-command (com-add-point)
     ((center point :prompt "point")
