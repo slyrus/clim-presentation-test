@@ -43,7 +43,9 @@
                         (t point 'point)
                       (draw-circle pane point 6 :ink ink :filled t))
                     (when last-point
-                      (draw-line pane last-point point :ink ink))))))
+                      (with-output-as-presentation
+                          (t (list last-point point) 'line)
+                        (draw-line pane last-point point :ink ink)))))))
         (unless view-origin
           (multiple-value-bind (px py)
               (output-record-position record)
@@ -103,7 +105,7 @@ the (destructively) modified list."
             (push point points))))))
 
 (define-clim-presentation-test-command (com-drag-add-point)
-    ((presentation t))
+    ((old-point t))
   (multiple-value-bind (px py)
       (point-position (view-origin *application-frame*))
     (with-accessors ((ink ink))
@@ -113,8 +115,7 @@ the (destructively) modified list."
 	    (dragging-output (pane :finish-on-release t)
 	      (draw-circle pane (get-pointer-position pane) 6
                            :ink ink :filled t))
-          (let ((old-point (presentation-object presentation)))
-            (com-add-point old-point (- x px) (- y py))))))))
+          (com-add-point old-point (- x px) (- y py)))))))
 
 (define-gesture-name add-point-gesture :pointer-button (:left :control))
 
@@ -125,8 +126,8 @@ the (destructively) modified list."
            :tester ((object presentation event)
                     (declare (ignore presentation event))
                     (pointp object)))
-    (object presentation)
-  (list presentation))
+    (object)
+  (list object))
 
 (define-gesture-name move-point-gesture :pointer-button (:left))
 
