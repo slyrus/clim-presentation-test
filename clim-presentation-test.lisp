@@ -19,15 +19,6 @@
          app
          interactor))))
 
-#+(or)
-(define-clim-presentation-test-command (com-refresh
-			                :name t
-			                :menu t)
-    ()
-  (window-clear (find-pane-named *application-frame* 'app))
-  (clim-presentation-test-display *application-frame*
-			          (find-pane-named *application-frame* 'app)))
-
 (defun clim-presentation-test-display (frame pane)
   (with-accessors ((points points)
                    (ink ink))
@@ -41,16 +32,15 @@
       ;;
       ;; now let's draw the points
       (clim:with-room-for-graphics (pane :first-quadrant nil)
-        (let ((ink ink))
-          (loop
-             :for last-point = nil then point
-             :for point :in points
-             :do
-               (with-output-as-presentation
-                   (t point 'point)
-                 (clim:draw-circle pane point 6 :ink ink :filled t))
-               (when last-point
-                 (clim:draw-line pane last-point point :ink ink))))))))
+        (loop
+           :for last-point = nil then point
+           :for point :in points
+           :do
+             (with-output-as-presentation
+                 (t point 'point)
+               (clim:draw-circle pane point 6 :ink ink :filled t))
+             (when last-point
+               (clim:draw-line pane last-point point :ink ink)))))))
 
 (defun accepting-point (&key (stream *query-io*))
   (accepting-values (stream)
@@ -85,17 +75,20 @@
                             (+ (- y py) 6))))))))
 
 (define-presentation-to-command-translator point-dragging-translator
-    (t com-drag-point clim-presentation-test
-       :tester ((object presentation)
+    (point com-drag-point clim-presentation-test
+       :gesture t
+       :menu nil
+       :tester ((object presentation event)
                 (declare (ignore presentation))
+                #+nil (describe presentation *debug-io*)
+                (when event
+                  (describe event *debug-io*)
+                  #+nil
+                  (let ((state (event-modifier-state event)))
+                    (print (list 'state state) *debug-io*)))
                 (pointp object)))
     (object presentation x y)
   (list presentation x y))
-
-(define-clim-presentation-test-command (com-set-point)
-    ((original point) (x real) (y real))
-  (declare (ignore original))
-  (com-add-point (make-point x y)))
 
 (defun insert-before (new-item before-item list)
   (let ((tail (member before-item list)))
@@ -130,40 +123,6 @@
       (let ((tail (member point points)))
         (when tail
           (rplaca tail (make-point x y)))))))
-
-(define-presentation-type my-rectangle ()
-  :inherit-from 'rectangle)
-
-(defun accepting-rectangle (&key (stream *query-io*))
-  (accepting-values (stream)
-    (let ((x1 (prog1
-                  (accept 'real :stream stream :default 0 :prompt "X1: ")
-                (fresh-line stream)))
-          (y1 (prog1
-                  (accept 'real :stream stream :default 0 :prompt "Y1: ")
-                (fresh-line stream)))
-          (x2 (prog1
-                  (accept 'real :stream stream :default 0 :prompt "X2: ")
-                (fresh-line stream)))
-          (y2 (prog1
-                  (accept 'real :stream stream :default 0 :prompt "Y2: ")
-                (fresh-line stream))))
-      (clim:make-rectangle* x1 y1 x2 y2))))
-
-(define-clim-presentation-test-command (com-draw-rectangle
-                                        :name t
-                                        :menu nil)
-    ()
-  (with-accessors ((points points)
-                   (stream frame-standard-input))
-      *application-frame*
-    (let ((rect (accepting-rectangle :stream stream)))
-      (when rect
-        (with-output-as-presentation
-            (t rect 'my-rectangle)
-          (clim:with-bounding-rectangle* (x1 y1 x2 y2) rect
-            (clim:with-room-for-graphics (stream)
-              (clim:draw-rectangle* stream x1 y1 x2 y2 :ink +blue+))))))))
 
 (define-clim-presentation-test-command (com-quit :name t :menu "Quit")
    ()
