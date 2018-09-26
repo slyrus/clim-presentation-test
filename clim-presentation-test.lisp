@@ -118,7 +118,7 @@ the (destructively) modified list."
 
 (define-gesture-name add-point-gesture :pointer-button (:left :control))
 
-(define-presentation-to-command-translator point-dragging-move-translator
+(define-presentation-to-command-translator point-dragging-add-translator
     (point com-drag-add-point clim-presentation-test
            :gesture add-point-gesture
            :menu nil
