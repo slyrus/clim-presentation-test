@@ -115,9 +115,9 @@
 	      (dragging-output (pane :finish-on-release t)
 	        (draw-circle pane (get-pointer-position pane) 6
                              :ink ink :filled t))
-            (com-add-point (make-point (+ (- x px) 6)
-                                       (+ (- y py) 6))
-                           :previous-point (clim:presentation-object presentation))))))))
+            (com-move-point (clim:presentation-object presentation)
+                            (+ (- x px) 6)
+                            (+ (- y py) 6))))))))
 
 (define-presentation-to-command-translator point-dragging-translator
     (t com-drag-point clim-presentation-test
@@ -132,6 +132,13 @@
   (declare (ignore original))
   (com-add-point (make-point x y)))
 
+(defun insert-before (new-item before-item list)
+  (let ((tail (member before-item list)))
+            (if tail
+                (progn (rplacd tail (cons (car tail) (cdr tail)))
+                       (rplaca tail new-item))
+                (push new-item list))))
+
 (define-clim-presentation-test-command (com-add-point)
     ((center point :prompt "point")
      &key (previous-point point :default nil))
@@ -140,16 +147,24 @@
       *application-frame*
     (when center
       (if previous-point
-          (let ((tail (member previous-point points)))
-            (if tail
-                (progn (rplacd tail (cons (car tail) (cdr tail)))
-                       (rplaca tail center))
-                (push center points)))
+          (insert-before center previous-point points)
           (push center points)))
     (loop for point in points
        do (with-output-as-presentation
               (t point 'clim:point)
             (format t "~&~A ~A" (clim:point-x point) (clim:point-y point))))))
+
+(define-clim-presentation-test-command (com-move-point)
+    ((point point :prompt "point")
+     (x real :prompt "X")
+     (y real :prompt "Y"))
+  (with-accessors ((points points)
+                   (stream frame-standard-input))
+      *application-frame*
+    (when (and point x y)
+      (let ((tail (member point points)))
+        (when tail
+          (rplaca tail (make-point x y)))))))
 
 (define-presentation-type my-rectangle ()
   :inherit-from 'rectangle)
