@@ -31,16 +31,16 @@
         (format pane "Add Point~&"))
       ;;
       ;; now let's draw the points
-      (clim:with-room-for-graphics (pane :first-quadrant nil)
+      (with-room-for-graphics (pane :first-quadrant nil)
         (loop
            :for last-point = nil then point
            :for point :in points
            :do
              (with-output-as-presentation
                  (t point 'point)
-               (clim:draw-circle pane point 6 :ink ink :filled t))
+               (draw-circle pane point 6 :ink ink :filled t))
              (when last-point
-               (clim:draw-line pane last-point point :ink ink)))))))
+               (draw-line pane last-point point :ink ink)))))))
 
 (defun accepting-point (&key (stream *query-io*))
   (accepting-values (stream)
@@ -50,7 +50,7 @@
           (y (prog1
                  (accept 'integer :stream stream :default 0 :prompt "Point Y: ")
                (fresh-line stream))))
-      (clim:make-point x y))))
+      (make-point x y))))
 
 (defun get-pointer-position (pane)
   (multiple-value-bind (x y) (stream-pointer-position pane)
@@ -59,7 +59,7 @@
 (define-clim-presentation-test-command (com-drag-point)
     ((presentation t) (x real) (y real))
   (print (list 'foo presentation x y) *debug-io*)
-  (let ((parent (clim:output-record-parent presentation)))
+  (let ((parent (output-record-parent presentation)))
     #+(or) (describe presentation *debug-io*)
     (multiple-value-bind (px py)
         (output-record-position parent)
@@ -70,7 +70,7 @@
 	      (dragging-output (pane :finish-on-release t)
 	        (draw-circle pane (get-pointer-position pane) 6
                              :ink ink :filled t))
-            (com-move-point (clim:presentation-object presentation)
+            (com-move-point (presentation-object presentation)
                             (+ (- x px) 6)
                             (+ (- y py) 6))))))))
 
@@ -109,8 +109,8 @@
           (push center points)))
     (loop for point in points
        do (with-output-as-presentation
-              (t point 'clim:point)
-            (format t "~&~A ~A" (clim:point-x point) (clim:point-y point))))))
+              (t point 'point)
+            (format t "~&~A ~A" (point-x point) (point-y point))))))
 
 (define-clim-presentation-test-command (com-move-point)
     ((point point :prompt "point")
