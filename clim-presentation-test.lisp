@@ -20,6 +20,14 @@
          app
          interactor))))
 
+;; 0. create a CLOS subclass for line output records
+(defclass line-output-record (standard-presentation) ())
+
+;; 1. create a presentation class for line output records
+(define-presentation-type line-output-record ()
+  :inherit-from 'line)
+
+;; 2. make our present code use this class
 (defun clim-presentation-test-display (frame pane)
   (with-accessors ((points points)
                    (ink ink)
@@ -44,18 +52,45 @@
                       (draw-circle pane point 6 :ink ink :filled t))
                     (when last-point
                       (with-output-as-presentation
-                          (t (list last-point point) 'line)
-                        (draw-line pane last-point point :ink ink)))))))
+                          (t (list last-point point) 'line :record-type 'line-output-record)
+                        (draw-line pane last-point point :ink ink))
+                      *debug-io*)))))
         (unless view-origin
           (multiple-value-bind (px py)
               (output-record-position record)
             (setf view-origin (make-point px py))))))))
 
-(defun get-pointer-position (pane)
-  "Returns a point with x and y values of the stream-pointer-position
+(defun point-distance (p1 p2)
+  (multiple-value-bind (x1 y1)
+      (point-position p1)
+    (multiple-value-bind (x2 y2)
+        (point-position p2)
+      (sqrt (+ (* (- x2 x1) (- x2 x1))
+               (* (- y2 y1) (- y2 y1)))))))
+
+(defun line-point-between-p (test-point line-point-1 line-point-2
+                                 &key (line-fuzz 0.5d0))
+  (let ((d1 (point-distance test-point line-point-1))
+        (d2 (point-distance test-point line-point-2))
+        (line-length (point-distance line-point-1 line-point-2)))
+    (values (< (abs (- line-length (+ d1 d2)))
+               line-fuzz)
+            (abs (- line-length (+ d1 d2))))))
+
+;; 3. add a new output-record-refined-position-test method that
+;; specializes on this class
+(defmethod output-record-refined-position-test ((record line-output-record) x y)
+  (print record *debug-io*)
+  (let ((line (presentation-object record)))
+    (destructuring-bind (p1 p2)
+        line
+      (line-point-between-p (make-point x y) p1 p2)))
+
+  (defun get-pointer-position (pane)
+    "Returns a point with x and y values of the stream-pointer-position
 of pane."
-  (multiple-value-bind (x y) (stream-pointer-position pane)
-    (make-point x y)))
+    (multiple-value-bind (x y) (stream-pointer-position pane)
+      (make-point x y))))
 
 (define-clim-presentation-test-command (com-move-point)
     ((point point :prompt "point")
@@ -148,7 +183,6 @@ of list. Returns the (destructively) modified list."
            :menu nil
            :tester ((object presentation event)
                     (declare (ignore presentation event))
-                    (print object *debug-io*)
                     (pointp object)))
     (object presentation)
   (list presentation))
