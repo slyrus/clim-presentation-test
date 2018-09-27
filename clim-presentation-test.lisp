@@ -84,13 +84,13 @@
   (let ((line (presentation-object record)))
     (destructuring-bind (p1 p2)
         line
-      (line-point-between-p (make-point x y) p1 p2)))
+      (line-point-between-p (make-point x y) p1 p2))))
 
-  (defun get-pointer-position (pane)
-    "Returns a point with x and y values of the stream-pointer-position
+(defun get-pointer-position (pane)
+  "Returns a point with x and y values of the stream-pointer-position
 of pane."
-    (multiple-value-bind (x y) (stream-pointer-position pane)
-      (make-point x y))))
+  (multiple-value-bind (x y) (stream-pointer-position pane)
+    (make-point x y)))
 
 (define-clim-presentation-test-command (com-move-point)
     ((point point :prompt "point")
