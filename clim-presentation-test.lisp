@@ -148,7 +148,8 @@ of pane."
     (when (and point x y)
       (let ((tail (member point points)))
         (when tail
-          (rplaca tail (make-point x y)))))))
+          (rplaca tail (make-point (max x 0)
+                                   (max y 0))))))))
 
 (define-clim-presentation-test-command (com-drag-move-point)
     ((presentation t))
@@ -192,7 +193,8 @@ of list. Returns the (destructively) modified list."
   (with-accessors ((points points))
       *application-frame*
     (when (and x y)
-      (let ((point (make-point x y)))
+      (let ((point (make-point (max x 0)
+                               (max y 0))))
         (if previous-point
             (insert-before point previous-point points)
             (push point points))))))
