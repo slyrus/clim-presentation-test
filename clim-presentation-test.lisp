@@ -60,6 +60,20 @@
               (output-record-position record)
             (setf view-origin (make-point px py))))))))
 
+(defun point+ (p1 p2)
+  (multiple-value-bind (x1 y1)
+      (point-position p1)
+    (multiple-value-bind (x2 y2)
+        (point-position p2)
+      (make-point (+ x1 x2) (+ y1 y2)))))
+
+(defun point- (p1 p2)
+  (multiple-value-bind (x1 y1)
+      (point-position p1)
+    (multiple-value-bind (x2 y2)
+        (point-position p2)
+      (make-point (- x1 x2) (- y1 y2)))))
+
 (defun point-distance (p1 p2)
   (multiple-value-bind (x1 y1)
       (point-position p1)
@@ -68,19 +82,34 @@
       (sqrt (+ (* (- x2 x1) (- x2 x1))
                (* (- y2 y1) (- y2 y1)))))))
 
+(defun square (x)
+  (* x x))
+
+(defun point-line-distance (test-point line-point-1 line-point-2)
+  (multiple-value-bind (x1 y1)
+      (point-position line-point-1)
+    (multiple-value-bind (x2 y2)
+        (point-position line-point-2)
+      (multiple-value-bind (x0 y0)
+          (point-position test-point)
+        (/ (abs (+ (* (- y2 y1) x0)
+                   (* x2 y1)
+                   (- (+ (* (- x2 x1) y0)
+                         (* y2 x1)))))
+           (sqrt (+ (square (- y2 y1))
+                    (square (- x2 x1)))))))))
+
 (defun line-point-between-p (test-point line-point-1 line-point-2
-                                 &key (line-fuzz 0.5d0))
-  (let ((d1 (point-distance test-point line-point-1))
-        (d2 (point-distance test-point line-point-2))
-        (line-length (point-distance line-point-1 line-point-2)))
-    (values (< (abs (- line-length (+ d1 d2)))
-               line-fuzz)
-            (abs (- line-length (+ d1 d2))))))
+                                 &key (line-fuzz 2))
+  (let ((distance (point-line-distance test-point line-point-1 line-point-2)))
+    (values (< distance line-fuzz)
+            distance)))
 
 ;; 3. add a new output-record-refined-position-test method that
 ;; specializes on this class
 (defmethod output-record-refined-position-test ((record line-output-record) x y)
   (print record *debug-io*)
+  ;; FIXME! Need to adjust or the view-origin
   (let ((line (presentation-object record)))
     (destructuring-bind (p1 p2)
         line
