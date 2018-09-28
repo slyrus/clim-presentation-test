@@ -100,20 +100,31 @@
                     (square (- x2 x1)))))))))
 
 (defun line-point-between-p (test-point line-point-1 line-point-2
-                                 &key (line-fuzz 2))
+                                 &key (line-fuzz 5))
   (let ((distance (point-line-distance test-point line-point-1 line-point-2)))
     (values (< distance line-fuzz)
             distance)))
 
+(defun top-level-output-record (record)
+  (when record
+    (with-accessors ((parent output-record-parent))
+        record
+      (if (null parent)
+          record
+          (top-level-output-record parent)))))
+
 ;; 3. add a new output-record-refined-position-test method that
 ;; specializes on this class
 (defmethod output-record-refined-position-test ((record line-output-record) x y)
-  (print record *debug-io*)
-  ;; FIXME! Need to adjust or the view-origin
-  (let ((line (presentation-object record)))
-    (destructuring-bind (p1 p2)
-        line
-      (line-point-between-p (make-point x y) p1 p2))))
+  (let ((top (top-level-output-record record)))
+    (let ((stream (climi::output-history-stream top)))
+      (let ((frame (pane-frame stream)))
+        (with-accessors ((view-origin view-origin))
+            frame
+          (let ((line (presentation-object record)))
+            (destructuring-bind (p1 p2)
+                line
+              (line-point-between-p (point- (make-point x y) view-origin) p1 p2))))))))
 
 (defun get-pointer-position (pane)
   "Returns a point with x and y values of the stream-pointer-position
