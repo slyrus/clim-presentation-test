@@ -107,7 +107,7 @@
                     (square (- x2 x1)))))))))
 
 (defun line-point-between-p (test-point line-point-1 line-point-2
-                                 &key (line-fuzz 5))
+                                 &key (line-fuzz 7))
   (let ((distance (point-line-distance test-point line-point-1 line-point-2)))
     (values (< distance line-fuzz)
             distance)))
