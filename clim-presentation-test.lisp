@@ -112,18 +112,16 @@
     (values (< distance line-fuzz)
             distance)))
 
-(defun top-level-output-record (record)
+(defun find-top-level-output-record (record)
   (when record
     (with-accessors ((parent output-record-parent))
         record
       (if (null parent)
           record
-          (top-level-output-record parent)))))
+          (find-top-level-output-record parent)))))
 
-;; 3. add a new output-record-refined-position-test method that
-;; specializes on this class
 (defmethod output-record-refined-position-test ((record line-output-record) x y)
-  (let ((top (top-level-output-record record)))
+  (let ((top (find-top-level-output-record record)))
     (let ((stream (climi::output-history-stream top)))
       (let ((frame (pane-frame stream)))
         (with-accessors ((view-origin view-origin))
