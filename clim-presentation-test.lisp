@@ -6,7 +6,7 @@
 (in-package :clim-presentation-test)
 
 (define-application-frame clim-presentation-test ()
-  ((points :initform nil :accessor points)
+  ((points :initform (list (make-point 10 10)) :accessor points)
    (ink :initform +blue+ :accessor ink)
    (view-origin :initform nil :accessor view-origin))
   (:menu-bar clim-presentation-test-menubar)
@@ -31,31 +31,27 @@
                    (ink ink)
                    (view-origin view-origin))
       frame
-    (with-text-size (pane :large)
-      ;;
-      ;; "Points" Label to start drwaing points
-      (with-output-as-presentation
-          (t `(com-add-point nil 0 0) 'command)
-        (format pane "Add Point "))
-      (format pane "(Control click on point or line to make new points)~&")
-      ;;
-      ;; now let's draw the points
-      (multiple-value-bind (left top)
-          (stream-cursor-position pane)
-        (setf view-origin (make-point left top)))
+    ;;
+    ;; now let's draw the points
+    (multiple-value-bind (left top)
+        (stream-cursor-position pane)
+      (setf view-origin (make-point left top)))
 
-      (with-room-for-graphics (pane :first-quadrant nil)
-        (loop
-           :for last-point = nil then point
-           :for point :in points
-           :do
-             (with-output-as-presentation
-                 (t point 'point)
-               (draw-circle pane point 6 :ink ink :filled t))
-             (when last-point
-               (with-output-as-presentation
-                   (t (list last-point point) 'line :record-type 'line-output-record)
-                 (draw-line pane last-point point :ink ink))))))))
+    (loop
+       :for last-point = nil then point
+       :for point :in points
+       :do
+         (with-output-as-presentation
+             (t point 'point)
+           (draw-circle pane point 6 :ink ink :filled t))
+         (when last-point
+           (with-output-as-presentation
+               (t
+                (make-line last-point point)
+                'line
+                :record-type 'line-output-record
+                :single-box t)
+             (draw-line pane last-point point :ink ink))))))
 
 (defun point+ (p1 p2)
   (multiple-value-bind (x1 y1)
