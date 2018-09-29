@@ -20,22 +20,12 @@
          app
          interactor))))
 
-;; 0. create a CLOS subclass for line output records
+
 (defclass line-output-record (standard-presentation) ())
 
-;; 1. create a presentation class for line output records
 (define-presentation-type line-output-record ()
   :inherit-from 'line)
 
-;; use this for debugging things with points
-#+(or)
-(defmethod print-object ((point standard-point) stream)
-    (format stream "#.(~A ~A ~A)"
-            (find-symbol "MAKE-POINT" :clim)
-            (point-x point)
-            (point-y point)))
-
-;; 2. make our present code use this class
 (defun clim-presentation-test-display (frame pane)
   (with-accessors ((points points)
                    (ink ink)
