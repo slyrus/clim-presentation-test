@@ -60,6 +60,14 @@
         (point-position p2)
       (make-point (+ x1 x2) (+ y1 y2)))))
 
+(defun point= (p1 p2)
+  (multiple-value-bind (x1 y1)
+      (point-position p1)
+    (multiple-value-bind (x2 y2)
+        (point-position p2)
+      (and (= x1 x2)
+           (= y1 y2)))))
+
 (defun point- (p1 p2)
   (multiple-value-bind (x1 y1)
       (point-position p1)
@@ -224,14 +232,12 @@ of list. Returns the (destructively) modified list."
     ((presentation t))
   (with-accessors ((points points))
       *application-frame*
-    (let ((line-points (presentation-object presentation)))
-      (destructuring-bind (p1 p2)
-          line-points
-        (let ((i1 (position p1 points))
-              (i2 (position p2 points)))
-          (let ((index (min (or i1 (length points))
-                            (or i2 (length points)))))
-            (com-drag-add-point (elt points (1+ index)))))))))
+    (let ((line (presentation-object presentation)))
+      (let ((i1 (position (line-start-point line) points :test 'point=))
+            (i2 (position (line-end-point line) points :test 'point=)))
+        (let ((index (min (or i1 (1- (length points)))
+                          (or i2 (1- (length points))))))
+          (com-drag-add-point (elt points (1+ index))))))))
 
 (define-gesture-name click-line-gesture :pointer-button (:left :control))
 
