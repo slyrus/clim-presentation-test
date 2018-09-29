@@ -121,9 +121,31 @@
         (with-accessors ((view-origin view-origin))
             frame
           (let ((line (presentation-object record)))
-            (destructuring-bind (p1 p2)
-                line
-              (line-point-between-p (point- (make-point x y) view-origin) p1 p2))))))))
+            (line-point-between-p (point- (make-point x y) view-origin)
+                                  (line-start-point line)
+                                  (line-end-point line))))))))
+
+(defmethod highlight-output-record ((record line-output-record) stream state)
+  (let ((line (presentation-object record)))
+    (with-accessors ((start line-start-point)
+                     (end line-end-point))
+        line
+      (case state
+        (:highlight
+         (let ((line-vector (point- end start))
+               (line-length (point-distance start end))
+               (origin (view-origin *application-frame*)))
+           (declare (ignore line-vector line-length))
+           (draw-line stream
+                      (point+ origin start)
+                      (point+ origin end)
+                      :line-thickness 4 :ink +yellow+)))
+        (:unhighlight (queue-repaint stream
+                                     (make-instance 'window-repaint-event
+                                                    :sheet stream
+                                                    :region (transform-region
+                                                             (sheet-native-transformation stream)
+                                                             record))))))))
 
 (defun get-pointer-position (pane)
   "Returns a point with x and y values of the stream-pointer-position
@@ -178,8 +200,8 @@ of list. Returns the (destructively) modified list."
                 (append list (list new-item))))
   list)
 
-(define-clim-presentation-test-command (com-add-point)
-    ((previous-point point :prompt "point")
+(define-clim-presentation-test-command (com-add-point :name t)
+    ((previous-point point)
      (x real :prompt "X")
      (y real :prompt "Y"))
   (with-accessors ((points points))
